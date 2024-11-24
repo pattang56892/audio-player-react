@@ -1,4 +1,3 @@
-// AudioPlayer.js
 import React, { useRef, useState, useEffect } from 'react';
 import {
   IconButton,
@@ -20,27 +19,27 @@ import {
 
 // Custom styled components with 3D box effect
 const PlayerContainer = styled(Paper)(({ theme }) => ({
-    padding: theme.spacing(3),
-    background: `linear-gradient(145deg, #e0e0e0, #ffffff)`,
-    borderRadius: theme.shape.borderRadius * 2,
+  padding: theme.spacing(3),
+  background: `linear-gradient(145deg, #e0e0e0, #ffffff)`,
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: `
+    15px 15px 30px rgba(0, 0, 0, 0.3), 
+    -15px -15px 30px rgba(255, 255, 255, 0.8),
+    inset 5px 5px 10px rgba(0, 0, 0, 0.15),
+    inset -5px -5px 10px rgba(255, 255, 255, 0.9)
+  `,
+  border: `1px solid rgba(0, 0, 0, 0.1)`,
+  transition: 'box-shadow 0.3s, transform 0.2s',
+  '&:hover': {
+    transform: 'scale(1.03)', // Increase scale for a more dynamic lift
     boxShadow: `
-      15px 15px 30px rgba(0, 0, 0, 0.3), 
-      -15px -15px 30px rgba(255, 255, 255, 0.8),
-      inset 5px 5px 10px rgba(0, 0, 0, 0.15),
-      inset -5px -5px 10px rgba(255, 255, 255, 0.9)
+      20px 20px 40px rgba(0, 0, 0, 0.35), 
+      -20px -20px 40px rgba(255, 255, 255, 0.85),
+      inset 6px 6px 12px rgba(0, 0, 0, 0.2),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.95)
     `,
-    border: `1px solid rgba(0, 0, 0, 0.1)`,
-    transition: 'box-shadow 0.3s, transform 0.2s',
-    '&:hover': {
-      transform: 'scale(1.03)', // Increase scale for a more dynamic lift
-      boxShadow: `
-        20px 20px 40px rgba(0, 0, 0, 0.35), 
-        -20px -20px 40px rgba(255, 255, 255, 0.85),
-        inset 6px 6px 12px rgba(0, 0, 0, 0.2),
-        inset -6px -6px 12px rgba(255, 255, 255, 0.95)
-      `,
-    },
-  }));  
+  },
+}));
 
 const Controls = styled(Box)({
   display: 'flex',
@@ -95,6 +94,67 @@ function AudioPlayer({ src }) {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(100);
 
+  // Draggable state
+  const [isDragging, setIsDragging] = useState(false);
+  const [playerPosition, setPlayerPosition] = useState({ x: 100, y: 100 }); // Initial position
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  // Draggable handlers
+  const handleMouseDown = (event) => {
+    setIsDragging(true);
+    setOffset({
+      x: event.clientX - playerPosition.x,
+      y: event.clientY - playerPosition.y,
+    });
+  };
+
+  const handleMouseMove = (event) => {
+    if (!isDragging) return;
+    setPlayerPosition({
+      x: event.clientX - offset.x,
+      y: event.clientY - offset.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Audio functionality
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const setAudioData = () => {
+      setDuration(audio.duration);
+      setPosition(audio.currentTime);
+    };
+
+    audio.addEventListener('loadeddata', setAudioData);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+
+    playing ? audio.play() : audio.pause();
+
+    return () => {
+      audio.removeEventListener('loadeddata', setAudioData);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [playing]);
+
   const togglePlay = () => {
     setPlaying((prev) => !prev);
   };
@@ -120,30 +180,20 @@ function AudioPlayer({ src }) {
   };
 
   useEffect(() => {
-    const audio = audioRef.current;
-
-    const setAudioData = () => {
-      setDuration(audio.duration);
-      setPosition(audio.currentTime);
-    };
-
-    audio.addEventListener('loadeddata', setAudioData);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-
-    playing ? audio.play() : audio.pause();
-
-    return () => {
-      audio.removeEventListener('loadeddata', setAudioData);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-    };
-  }, [playing]);
-
-  useEffect(() => {
     audioRef.current.muted = muted;
   }, [muted]);
 
   return (
-    <PlayerContainer elevation={3}>
+    <PlayerContainer
+      elevation={3}
+      style={{
+        position: 'absolute',
+        left: playerPosition.x,
+        top: playerPosition.y,
+        cursor: isDragging ? 'grabbing' : 'grab',
+      }}
+      onMouseDown={handleMouseDown}
+    >
       {/* Display Song Title */}
       <Typography
         variant="h6"
