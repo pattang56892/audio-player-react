@@ -20,6 +20,9 @@ import {
 // Custom styled components with 3D box effect
 const PlayerContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
+  width: '80%',
+  maxWidth: '400px',
+  minWidth: '200px',
   background: `linear-gradient(145deg, #e0e0e0, #ffffff)`,
   borderRadius: theme.shape.borderRadius * 2,
   boxShadow: `
